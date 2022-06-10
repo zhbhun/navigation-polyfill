@@ -1,15 +1,19 @@
 export interface HistoryEventInit extends EventInit {
   state: any;
+  url: string | URL | null | undefined;
 }
 
 export class HistoryEvent extends Event {
   readonly state: any;
+  readonly url: string | URL | null | undefined;
+
   _defaultPrevented: boolean = false;
 
   constructor(type: string, options: HistoryEventInit) {
-    const { state, ...eventInit } = options;
+    const { state, url, ...eventInit } = options;
     super(type);
     this.state = state;
+    this.url = url;
   }
 
   preventDefault(): void {
@@ -85,7 +89,7 @@ export default function (options?: {
         index: ++index,
       },
     });
-    const pushStateEvent = new HistoryEvent("pushstate", { state });
+    const pushStateEvent = new HistoryEvent("pushstate", { state, url });
     window.dispatchEvent(pushStateEvent);
     if (!pushStateEvent.isDefaultPrevented()) {
       nativePushState.call(this, state, unused, url);
@@ -103,7 +107,7 @@ export default function (options?: {
         index: history.state?.[navigation]?.index ?? defaultNavigation.index,
       },
     });
-    const replaceStateEvent = new HistoryEvent("replacestate", { state });
+    const replaceStateEvent = new HistoryEvent("replacestate", { state, url });
     window.dispatchEvent(replaceStateEvent);
     if (!replaceStateEvent.isDefaultPrevented()) {
       nativeReplaceState.call(this, state, unused, url);
