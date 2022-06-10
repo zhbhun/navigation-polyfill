@@ -1,82 +1,65 @@
-# js-serialization
+English | [简体中文](./README_zh-CN.md)
 
-`js-serialization` is a js serializer that support `undefined`, `NaN`, `Infinity`, `BigInt`, `Date`, etc.
+`HistoryEvent` is an interface for the pushstate and replacestate event.
 
-## API
+A pushstate and replacestate event is dispatched to the window every time, if the history entry being activated was created by a call to history.pushState() or was affected by a call to history.replaceState().
 
-### `jss.parse(text[, reviver])`
+## Why
 
-The `jss.parse()` method parses a JS Serialization string, constructing the JavaScript value or object described by the string. An optional reviver function can be provided to perform a transformation on the resulting object before it is returned.
+It is well known that browsers already provide a popstate event. However, the popstate event is only triggered by certain browser actions, such as clicking the back button (or calling history.back() or history.forward() in JavaScript). That is, navigating between two history entries in the same document will trigger this event. Calling history.pushState() or history.replaceState() will not trigger the popstate event.
 
-- Syntax
+In some cases, we need to know that the browser has newly opened or replaced a route and do some additional processing before switching, such as:
 
-  ```js
-  jss.parse(text)
-  jss.parse(text, reviver)
-  ```
+1. blocking the routing switch.
+2. doing buried reporting when a route switch occurs.
+3. setting additional history states.
 
-- Parameters
+## Install
 
-  - text
-    
-    The string to parse as JS Serialization.
-    
-  - reviver: Optional
-
-    If a function, this prescribes how the value originally produced by parsing is transformed, before being returned.
-
-- Return value
-
-  The Object, Array, string, number, boolean, or null value corresponding to the given JS Serialization text.
-
-- Exceptions
-
-  Throws a SyntaxError exception if the string to parse is not valid JS Serialization.
-
-### `jss.stringify(value[, replacer[, space]])`
-
-The `jss.stringify()` method converts a JavaScript object or value to a JS Serialization string, optionally replacing values if a replacer function is specified or optionally including only the specified properties if a replacer array is specified.
-
-- Syntax
-
-  ```js
-  jss.stringify(value);
-  jss.stringify(value, replacer);
-  jss.stringify(value, replacer, space);
-  ```
-
-- Parameters
-
-  - value
-    
-    The value to convert to a JS Serialization string.
-
-  - replacer：Optional
-
-    A function that alters the behavior of the stringification process, or an array of strings or numbers naming properties of value that should be included in the output. If replacer is null or not provided, all properties of the object are included in the resulting JS Serialization string.
-
-  - space: Optional
-
-    A String or Number object that's used to insert white space (including indentation, line break characters, etc.) into the output JS Serialization string for readability purposes.
-
-    If this is a Number, it indicates the number of space characters to use as white space for indenting purposes; this number is capped at 10 (if it is greater, the value is just 10). Values less than 1 indicate that no space should be used.
-
-    If this is a String, the string (or the first 10 characters of the string, if it's longer than that) is used as white space.
-
-    If this parameter is not provided (or is null), no white space is used.
-
-- Return value
-
-  A JS Serialization string representing the given value, or undefined.
-
-- Exceptions
-
-  - Throws a TypeError ("cyclic object value") exception when a circular reference is found.
-
-## Examples
-
-```js
-jss.stringify([undefined, null, NaN, Infinity, new Date()]); // '["data:undefined,",null,"data:number,NaN","data:number,Infinity","data:date,1653882660435"]'
-jss.parse('["data:undefined,",null,"data:number,NaN","data:number,Infinity","data:date,1653882660435"]'); // [undefined, null, NaN, Infinity, new Date()]
+```shell
+npm install history-event
+# yarn add history-event
+# pnpm add history-event
 ```
 
+## Usage
+
+HistoryEvent is more like a polyfill and must be injected on the first line of code in the program.
+
+```js
+// polyfill.js
+import historyEventPolyfill from "history-event";
+historyEventPolyfill();
+
+// main.js
+import "./polyfill";
+// import 'others';
+// ...
+
+// case.js
+window.addEventListener("pushstate", function (event) {
+  event.preventDefault(); // blocking the opening new route
+});
+window.addEventListener("replacestate", function (event) {
+  event.preventDefault(); // blocking the replacing current route
+});
+```
+
+In addition to providing pushstate and replace events, the HistoryEvent stores information about the next navigation on the state property of each event (accessed via event.state.navigation).
+
+Each navigation stores a key and index, with the key representing the route's unique navigation identifier and the index representing the index position (starting at 0) in the current route's sub-history stack.
+
+```js
+window.addEventListener("pushstate", function (event) {
+  console.log(event.state.navigation.key); // unique key of new navigation
+  console.log(event.state.navigation.index); // history index of new navigation
+});
+window.addEventListener("replacestate", function (event) {
+  console.log(event.state.navigation.key); // unique key of replacing navigation
+  console.log(event.state.navigation.index); // history index of replacing navigation
+});
+document.querySelector("#submit").addEventListener("click", function () {
+  // go to home page after submit
+  history.go(-history.state.navigation.index);
+});
+```
