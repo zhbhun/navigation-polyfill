@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>hitory-event</title>
+    <style>
+      .button-group {
+        display: flex;
+        flex-direction: row;
+      }
+      .button {
+        margin-left: 15px;
+      }
+      .output {
+        margin: 20px 30px;
+      }
+      .output-item {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        margin-bottom: 15px;
+        min-height: 50px;
+        line-height: 50px;
+      }
+      .output-item-label {
+        display: block;
+        flex-shrink: 0;
+        width: 200px;
+        margin-right: 15px;
+        text-align: right;
+      }
+      .output-item-control {
+        display: block;
+        flex: 1;
+      }
+      code.output-item-control,
+      pre.output-item-control {
+        padding: 15px;
+        line-height: 20px;
+      }
+      pre.output-item-control {
+        max-height: 500px;
+        overflow: auto;
+        border: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="button-group">
+      <button class="button" data-method="push" data-url="/a">push a</button>
+      <button class="button" data-method="push" data-url="/b">push b</button>
+      <button class="button" data-method="push" data-url="/c">push c</button>
+      <button class="button" data-method="replace">replace</button>
+      <button class="button" data-method="go" data-delta="-1">go(-1)</button>
+      <button class="button" data-method="go" data-delta="-2">go(-2)</button>
+      <button class="button" data-method="go" data-delta="1">go(1)</button>
+      <button class="button" data-method="go" data-delta="2">go(2)</button>
+      <button class="button" data-method="prevent">
+        default prevent enable
+      </button>
+    </section>
+    <section class="output">
+      <div class="output-item">
+        <label class="output-item-label">current navigation: </label>
+        <pre class="output-item-control" name="currentNavigation"></pre>
+      </div>
+      <div class="output-item">
+        <label class="output-item-label">navigation stack: </label>
+        <pre class="output-item-control" name="navigationStack"></pre>
+      </div>
+      <div class="output-item">
+        <label class="output-item-label">logs: </label>
+        <pre class="output-item-control" name="logs"></pre>
+      </div>
+    </section>
+    <script type="module">
+      import historyEventPolyfill, {
+        getCurrentNavigation,
+        getNavigationStack,
+      } from './es/index.js'
+
+      historyEventPolyfill()
+
+      const logs = []
+      let isPevented = false
+
+      function render(event) {
+        if (isPevented) {
+          event.preventDefault()
+        }
+        setTimeout(() => {
+          const currentNavigationEle = document.querySelector(
+            '.output-item-control[name="currentNavigation"]'
+          )
+          const navigationStackEle = document.querySelector(
+            '.output-item-control[name="navigationStack"]'
+          )
+          const logsEle = document.querySelector(
+            '.output-item-control[name="logs"]'
+          )
+          currentNavigationEle.innerHTML = JSON.stringify(
+            getCurrentNavigation(),
+            null,
+            2
+          )
+          navigationStackEle.innerHTML = getNavigationStack()
+            .map((navigation) => {
+              return JSON.stringify(navigation, null, 2)
+            })
+            .join('\n')
+          logsEle.innerHTML = logs
+            .map((event, index) => {
+              return JSON.stringify(
+                {
+                  index: index + 1,
+                  type: event.type,
+                  url: event.url,
+                  navigation: event.state.navigation,
+                  defaultPrevented: event.defaultPrevented,
+                },
+                null,
+                2
+              )
+            })
+            .join('\n')
+        }, 0)
+      }
+
+      const buttonGroupEle = document.querySelector('.button-group')
+      buttonGroupEle.addEventListener('click', function (event) {
+        const { method, url, delta } = event.target.dataset
+        if (method === 'push') {
+          history.pushState(null, null, url)
+        } else if (method === 'replace') {
+          history.replaceState(
+            null,
+            null,
+            location.pathname + '?ts=' + Date.now()
+          )
+        } else if (method === 'go') {
+          history.go(Number(delta))
+        } else if (method === 'prevent') {
+          isPevented = !isPevented
+          event.target.innerHTML = isPevented
+            ? 'default prevent disable'
+            : 'default prevent enagle'
+        }
+      })
+      window.addEventListener('pushstate', function (event) {
+        logs.push(event)
+        render(event)
+      })
+      window.addEventListener('replacestate', function (event) {
+        logs.push(event)
+        render(event)
+      })
+      window.addEventListener('popstate', function (event) {
+        logs.push(event)
+        render(event)
+      })
+      document.addEventListener('DOMContentLoaded', render)
+    </script>
+  </body>
+</html>
