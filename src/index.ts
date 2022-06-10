@@ -4,11 +4,21 @@ export interface HistoryEventInit extends EventInit {
 
 export class HistoryEvent extends Event {
   readonly state: any;
+  _defaultPrevented: boolean = false;
 
   constructor(type: string, options: HistoryEventInit) {
     const { state, ...eventInit } = options;
     super(type);
     this.state = state;
+  }
+
+  preventDefault(): void {
+    super.preventDefault();
+    this._defaultPrevented = true;
+  }
+
+  isDefaultPrevented() {
+    return this._defaultPrevented;
   }
 }
 
@@ -77,7 +87,9 @@ export default function (options?: {
     });
     const pushStateEvent = new HistoryEvent("pushstate", { state });
     window.dispatchEvent(pushStateEvent);
-    nativePushState.call(this, state, unused, url);
+    if (!pushStateEvent.isDefaultPrevented()) {
+      nativePushState.call(this, state, unused, url);
+    }
   };
 
   History.prototype.replaceState = function (
@@ -93,7 +105,9 @@ export default function (options?: {
     });
     const replaceStateEvent = new HistoryEvent("replacestate", { state });
     window.dispatchEvent(replaceStateEvent);
-    nativeReplaceState.call(this, state, unused, url);
+    if (!replaceStateEvent.isDefaultPrevented()) {
+      nativeReplaceState.call(this, state, unused, url);
+    }
   };
 
   window.addEventListener("popstate", function (event) {
