@@ -1,6 +1,6 @@
 {
   "name": "history-event",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "history is an interface for the pushstate and replacestate event.",
   "homepage": "https://github.com/zhbhun/history-event",
   "repository": {
