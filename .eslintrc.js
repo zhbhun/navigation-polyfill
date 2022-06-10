@@ -1,3 +1,3 @@
 module.exports = {
-  extends: ['@zhbhun/eslint-config-base'],
+  extends: ['@zhbhun/eslint-config-base/typescript'],
 }

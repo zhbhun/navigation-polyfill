@@ -1,70 +1,70 @@
 export interface HistoryEventInit extends EventInit {
-  state: any;
-  url: string | URL | null | undefined;
+  state: any
+  url: string | URL | null | undefined
 }
 
 export class HistoryEvent extends Event {
-  readonly state: any;
-  readonly url: string | URL | null | undefined;
+  readonly state: any
+  readonly url: string | URL | null | undefined
 
-  _defaultPrevented: boolean = false;
+  _defaultPrevented = false
 
   constructor(type: string, options: HistoryEventInit) {
-    const { state, url, ...eventInit } = options;
-    super(type);
-    this.state = state;
-    this.url = url;
+    const { state, url, ...eventInit } = options
+    super(type, eventInit)
+    this.state = state
+    this.url = url
   }
 
   preventDefault(): void {
-    super.preventDefault();
-    this._defaultPrevented = true;
+    super.preventDefault()
+    this._defaultPrevented = true
   }
 
   isDefaultPrevented() {
-    return this._defaultPrevented;
+    return this._defaultPrevented
   }
 }
 
 export interface HistoryNavigation {
-  key: string;
-  index: number;
+  key: string
+  index: number
 }
 
 const defaultNavigation: HistoryNavigation = {
-  key: "",
+  key: '',
   index: -1,
-};
+}
 
-let navigationKey = "navigation";
+let navigationKey = 'navigation'
 
 export function getCurrentNavigation(): HistoryNavigation {
-  return history.state?.[navigationKey] || defaultNavigation;
+  return history.state?.[navigationKey] || defaultNavigation
 }
 
 function defaultCreateKey() {
-  return Math.random().toString(36).substring(2, 10);
+  return Math.random().toString(36).substring(2, 10)
 }
 
 export default function (options?: {
   /** 在 history.state 存储导航信息的 key 值，默认 `'navigation'` */
-  navigation?: string;
+  navigation?: string
   /** 每个导航信息都有一个唯一的 key，createKey 用于生成该值  */
-  createKey?(): string;
+  createKey?(): string
 }) {
   const { navigation = navigationKey, createKey = defaultCreateKey } =
-    options || {};
+    options || {}
   if (navigation !== navigationKey) {
-    navigationKey = navigation;
+    navigationKey = navigation
   }
 
-  const nativePushState = History.prototype.pushState;
-  const nativeReplaceState = History.prototype.replaceState;
+  const nativePushState = History.prototype.pushState
+  const nativeReplaceState = History.prototype.replaceState
 
-  let index = history.state?.[navigation]?.index ?? defaultNavigation.index;
+  let index = history.state?.[navigation]?.index ?? defaultNavigation.index
 
   if (index < 0) {
-    index = 0;
+    index = 0
     nativeReplaceState.call(
       history,
       Object.assign({}, history.state, {
@@ -73,9 +73,9 @@ export default function (options?: {
           index,
         },
       }),
-      "",
+      '',
       location.pathname + location.search + location.hash
-    );
+    )
   }
 
   History.prototype.pushState = function (
@@ -88,13 +88,13 @@ export default function (options?: {
         key: createKey(),
         index: ++index,
       },
-    });
-    const pushStateEvent = new HistoryEvent("pushstate", { state, url });
-    window.dispatchEvent(pushStateEvent);
+    })
+    const pushStateEvent = new HistoryEvent('pushstate', { state, url })
+    window.dispatchEvent(pushStateEvent)
     if (!pushStateEvent.isDefaultPrevented()) {
-      nativePushState.call(this, state, unused, url);
+      nativePushState.call(this, state, unused, url)
     }
-  };
+  }
 
   History.prototype.replaceState = function (
     data: any,
@@ -106,15 +106,15 @@ export default function (options?: {
         key: createKey(),
         index: history.state?.[navigation]?.index ?? defaultNavigation.index,
       },
-    });
-    const replaceStateEvent = new HistoryEvent("replacestate", { state, url });
-    window.dispatchEvent(replaceStateEvent);
+    })
+    const replaceStateEvent = new HistoryEvent('replacestate', { state, url })
+    window.dispatchEvent(replaceStateEvent)
     if (!replaceStateEvent.isDefaultPrevented()) {
-      nativeReplaceState.call(this, state, unused, url);
+      nativeReplaceState.call(this, state, unused, url)
     }
-  };
+  }
 
-  window.addEventListener("popstate", function (event) {
-    index = event.state?.[navigation]?.index ?? defaultNavigation.index;
-  });
+  window.addEventListener('popstate', function (event) {
+    index = event.state?.[navigation]?.index ?? defaultNavigation.index
+  })
 }
