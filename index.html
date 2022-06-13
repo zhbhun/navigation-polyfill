@@ -64,11 +64,11 @@
     <section class="output">
       <div class="output-item">
         <label class="output-item-label">current navigation: </label>
-        <pre class="output-item-control" name="currentNavigation"></pre>
+        <pre class="output-item-control" name="currentEntry"></pre>
       </div>
       <div class="output-item">
         <label class="output-item-label">navigation stack: </label>
-        <pre class="output-item-control" name="navigationStack"></pre>
+        <pre class="output-item-control" name="entries"></pre>
       </div>
       <div class="output-item">
         <label class="output-item-label">logs: </label>
@@ -76,12 +76,7 @@
       </div>
     </section>
     <script type="module">
-      import historyEventPolyfill, {
-        getCurrentNavigation,
-        getNavigationStack,
-      } from './es/index.js'
-
-      historyEventPolyfill()
+      import navigation from './es/index.js'
 
       const logs = []
       let isPevented = false
@@ -91,23 +86,23 @@
           event.preventDefault()
         }
         setTimeout(() => {
-          const currentNavigationEle = document.querySelector(
-            '.output-item-control[name="currentNavigation"]'
+          const currentEntryEle = document.querySelector(
+            '.output-item-control[name="currentEntry"]'
           )
-          const navigationStackEle = document.querySelector(
-            '.output-item-control[name="navigationStack"]'
+          const entriesEle = document.querySelector(
+            '.output-item-control[name="entries"]'
           )
           const logsEle = document.querySelector(
             '.output-item-control[name="logs"]'
           )
-          currentNavigationEle.innerHTML = JSON.stringify(
-            getCurrentNavigation(),
+          currentEntryEle.innerHTML = JSON.stringify(
+            navigation.currentEntry.getState(),
             null,
             2
           )
-          navigationStackEle.innerHTML = getNavigationStack()
-            .map((navigation) => {
-              return JSON.stringify(navigation, null, 2)
+          entriesEle.innerHTML = navigation.entries()
+            .map((entry) => {
+              return JSON.stringify(entry.getState(), null, 2)
             })
             .join('\n')
           logsEle.innerHTML = logs
@@ -115,9 +110,12 @@
               return JSON.stringify(
                 {
                   index: index + 1,
-                  type: event.type,
-                  url: event.url,
-                  navigation: event.state.navigation,
+                  navigationType: event.navigationType,
+                  destination: {
+                    id: event.destination.id,
+                    index: event.destination.index,
+                    url: event.destination.url,
+                  },
                   defaultPrevented: event.defaultPrevented,
                 },
                 null,
@@ -148,19 +146,12 @@
             : 'default prevent enagle'
         }
       })
-      window.addEventListener('pushstate', function (event) {
-        logs.push(event)
-        render(event)
-      })
-      window.addEventListener('replacestate', function (event) {
-        logs.push(event)
-        render(event)
-      })
-      window.addEventListener('popstate', function (event) {
+      navigation.addEventListener('navigate', function (event) {
         logs.push(event)
         render(event)
       })
       document.addEventListener('DOMContentLoaded', render)
+      console.log(navigation)
     </script>
   </body>
 </html>
