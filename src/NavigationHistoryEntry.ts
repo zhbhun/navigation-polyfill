@@ -1,64 +1,68 @@
-import {
-  NAVIGATION_STATE_KEY,
-  NAVIGATION_HISTORY_ENTRY_STATE_KEY,
-} from './constants'
+import { NAVIGATION_HISTORY_ENTRY_STATE_CACHE_KEY } from './constants'
 import { createKey } from './utils'
-// eslint-disable-next-line
-import Navigation from './Navigation'
-// eslint-disable-next-line
-import NavigationHistoryStack from './NavigationHistoryStack'
 
-export interface NavigationHistoryEntryState {
-  id: string
-  index: number
-}
-
-export interface NavigationDestination {
+export interface NavigationHistoryEntryJSON {
+  key: string
   id: string
   index: number
   url: string | URL | null | undefined
 }
 
-export function createNavigationHistoryState(
-  state: any,
-  navigation: Navigation,
-  entry: NavigationHistoryEntry
-) {
-  return Object.assign({}, state, {
-    [NAVIGATION_STATE_KEY]: navigation.id,
-    [NAVIGATION_HISTORY_ENTRY_STATE_KEY]: entry.getState(),
-  })
+export function getNavigationHitoryEntryStateCacheKey(key: string) {
+  return `${NAVIGATION_HISTORY_ENTRY_STATE_CACHE_KEY}_${key}`
 }
 
-export function getNavigationHistryEntryIndex(state: any): number {
-  const entryState: NavigationHistoryEntryState | undefined =
-    state?.[NAVIGATION_HISTORY_ENTRY_STATE_KEY]
-  return entryState?.index ?? -1
+export function getNavigationHistoryEntryState(key: string): any {
+  const stateCacheKey = getNavigationHitoryEntryStateCacheKey(key)
+  const stateCache = sessionStorage.getItem(stateCacheKey)
+  if (stateCache) {
+    try {
+      return JSON.parse(stateCache)
+    } catch (error) {
+      // ignore
+    }
+  }
+  return undefined
 }
 
-export function getCurrentNavigationHistryEntryIndex(): number {
-  return getNavigationHistryEntryIndex(history.state)
+export function setNavigationHistoryEntryState(key: string, state: any) {
+  const stateCacheKey = getNavigationHitoryEntryStateCacheKey(key)
+  if (state === null || state === undefined) {
+    sessionStorage.removeItem(stateCacheKey)
+  } else {
+    const stateCache = JSON.stringify(state)
+    sessionStorage.setItem(stateCacheKey, stateCache)
+  }
 }
 
 export default class NavigationHistoryEntry {
-  id: string
-  index: number
-  url: string | URL | null | undefined
+  public readonly key: string
+  public readonly id: string
+  public readonly index: number
+  public readonly url: string | URL | null | undefined
 
   constructor(
     index: number,
     url?: string | URL | null | undefined,
+    key?: string,
     id?: string
   ) {
     this.index = index
     this.url = url
+    this.key = key ?? createKey()
     this.id = id ?? createKey()
   }
 
-  getState(): NavigationHistoryEntryState {
+  toJSON(): NavigationHistoryEntryJSON {
     return {
-      id: this.id,
       index: this.index,
+      url: this.url,
+      key: this.key,
+      id: this.id,
     }
+  }
+
+  getState(): any {
+    return getNavigationHistoryEntryState(this.key)
   }
 }

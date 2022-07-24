@@ -1,6 +1,10 @@
-import type { NavigationDestination } from './NavigationHistoryEntry'
-
 export type NavigationType = 'reload' | 'push' | 'replace' | 'traverse'
+
+export interface NavigationDestination {
+  id: string
+  index: number
+  url: string | URL | null | undefined
+}
 
 export interface NavigateEventInit extends EventInit {
   navigationType: NavigationType
