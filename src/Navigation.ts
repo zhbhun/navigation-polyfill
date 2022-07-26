@@ -1,39 +1,63 @@
 import NavigateEvent from './NavigateEvent'
-// eslint-disable-next-line
 import NavigationHistoryEntry, {
-  createNavigationHistoryState,
-  getNavigationHistryEntryIndex,
-  getCurrentNavigationHistryEntryIndex,
+  setNavigationHistoryEntryState,
 } from './NavigationHistoryEntry'
-// eslint-disable-next-line
 import NavigationHistoryStack from './NavigationHistoryStack'
-import { NAVIGATION_STATE_KEY } from './constants'
+import {
+  NAVIGATION_STATE_KEY,
+  NAVIGATION_HISTORY_ENTRY_STATE_KEY,
+} from './constants'
 import { createKey } from './utils'
-
-// eslint-disable-next-line
-let navigation: Navigation
 
 const nativePushState = History.prototype.pushState
 const nativeReplaceState = History.prototype.replaceState
 
-class Navigation extends EventTarget {
-  public id: string
-  public currentEntry: NavigationHistoryEntry
+export interface NavigationUpdateCurrentEntryOptions {
+  state: any
+}
 
-  private entryStack: NavigationHistoryStack
+function createNavigationHistoryState(
+  state: any,
+  navigation: Navigation,
+  entry: NavigationHistoryEntry
+) {
+  return Object.assign({}, state, {
+    [NAVIGATION_STATE_KEY]: navigation.key,
+    [NAVIGATION_HISTORY_ENTRY_STATE_KEY]: entry.key,
+  })
+}
 
-  static getCurrent(): Navigation {
-    return navigation
+function getNavigationCurrentEntryKey() {
+  return history.state?.[NAVIGATION_HISTORY_ENTRY_STATE_KEY]
+}
+
+function getNavigationEntry(
+  entries: NavigationHistoryEntry[],
+  entryKey = getNavigationCurrentEntryKey()
+) {
+  let matchedEntry: NavigationHistoryEntry = entries[entries.length - 1]
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index]
+    if (entry.key === entryKey) {
+      matchedEntry = entry
+    }
   }
+  return matchedEntry
+}
+
+class Navigation extends EventTarget {
+  public key: string
+  public currentEntry: NavigationHistoryEntry
+  private entryStack: NavigationHistoryStack
 
   constructor() {
     super()
 
-    const stateId = history.state?.[NAVIGATION_STATE_KEY]
-    const id: string = stateId ?? createKey()
-    const shouldInit = stateId !== id
+    const cacheKey = history.state?.[NAVIGATION_STATE_KEY]
+    const key: string = cacheKey ?? createKey()
+    const shouldInit = cacheKey !== key
 
-    this.id = id
+    this.key = key
     this.entryStack = new NavigationHistoryStack(this)
 
     // init
@@ -52,7 +76,7 @@ class Navigation extends EventTarget {
     }
 
     // currentEntry
-    this.currentEntry = this.entries()[getCurrentNavigationHistryEntryIndex()]
+    this.currentEntry = getNavigationEntry(this.entryStack.entries())
 
     const that = this
 
@@ -63,13 +87,13 @@ class Navigation extends EventTarget {
       url?: string | URL | null | undefined
     ) {
       const entry = new NavigationHistoryEntry(that.currentEntry.index + 1, url)
-      const state = createNavigationHistoryState(data, that, entry)
       const navigateEvent = new NavigateEvent('navigate', {
         navigationType: 'push',
         destination: entry,
       })
       that.dispatchEvent(navigateEvent)
       if (!navigateEvent.defaultPrevented) {
+        const state = createNavigationHistoryState(data, that, entry)
         nativePushState.call(this, state, unused, url)
         that.entryStack.push(entry)
         that.currentEntry = entry
@@ -80,22 +104,26 @@ class Navigation extends EventTarget {
       unused: string,
       url?: string | URL | null | undefined
     ) {
-      const entry = new NavigationHistoryEntry(that.currentEntry.index, url)
-      const state = createNavigationHistoryState(data, that, entry)
+      const entry = new NavigationHistoryEntry(
+        that.currentEntry.index,
+        url,
+        navigation.currentEntry.key
+      )
       const navigateEvent = new NavigateEvent('navigate', {
         navigationType: 'replace',
         destination: entry,
       })
       that.dispatchEvent(navigateEvent)
       if (!navigateEvent.defaultPrevented) {
+        const state = createNavigationHistoryState(data, that, entry)
         nativeReplaceState.call(this, state, unused, url)
         that.entryStack.replace(entry)
         that.currentEntry = entry
       }
     }
     window.addEventListener('popstate', function (event: PopStateEvent) {
-      const index = getNavigationHistryEntryIndex(event.state)
-      const entry = that.entries()[index]
+      const entryKey = event.state[NAVIGATION_HISTORY_ENTRY_STATE_KEY]
+      const entry = getNavigationEntry(that.entries(), entryKey)
       that.currentEntry = entry
       const navigateEvent = new NavigateEvent('navigate', {
         navigationType: 'traverse',
@@ -106,12 +134,16 @@ class Navigation extends EventTarget {
     })
   }
 
+  updateCurrentEntry(options: NavigationUpdateCurrentEntryOptions) {
+    setNavigationHistoryEntryState(this.currentEntry.key, options.state)
+  }
+
   entries(): NavigationHistoryEntry[] {
     return this.entryStack.entries()
   }
 }
 
-navigation = new Navigation()
+const navigation = new Navigation()
 
 export { navigation }
 
